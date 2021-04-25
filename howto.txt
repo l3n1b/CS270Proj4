@@ -1,2 +1,4 @@
 https://towardsdatascience.com/installing-github-in-visual-studio-code-for-windows-10-6abd3325ab1
 git add .
+https://dont-be-afraid-to-commit.readthedocs.io/en/latest/git/commandlinegit.html
+https://docs.github.com/en/github/importing-your-projects-to-github/adding-an-existing-project-to-github-using-the-command-line
