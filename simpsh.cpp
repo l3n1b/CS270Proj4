@@ -5,8 +5,6 @@
 
 using namespace std;
 
-//this is now on github 
-
 struct variable {
     string name;
     string value;
