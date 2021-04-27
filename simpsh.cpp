@@ -72,7 +72,7 @@ void listVariables(){ // lv // Should do what printDict does now
 
 }
 
-void unset(){ // unset
+void unset(){ // unset asdfasdfasdf
     printf("unset variable\n"); //Debug
 
 }
