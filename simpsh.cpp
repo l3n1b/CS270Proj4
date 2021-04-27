@@ -65,6 +65,7 @@ void changeDirectory(string dirName){ // cd COME BACK LATER
 
 //WHAT I'M TRYING TO DO IS MERGE OVERLAPPING STRINGS
 //check if this is legit https://docs.w3cub.com/cpp/filesystem/exists
+//hello world
     string base;
     //cout << dictionary[1].value << endl;
     //cout << dictionary[1].value.find(dirName) << endl;
