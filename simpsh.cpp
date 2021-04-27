@@ -11,6 +11,7 @@ struct variable {
 };
 
 vector<variable> dictionary; //initialize variable list globally
+//PATH = dictionary[0].value
 vector<string> tokens; //initialize token list globally
 
 //Scanner function to read a line and generate a list of tokens
@@ -18,6 +19,7 @@ void scanner(){
 
     char lineIn[256]; 
     fgets(lineIn, 256, stdin);
+    tokens.clear(); //empties tokens vector
 
     string newToken = "";
 
@@ -59,7 +61,31 @@ void comment(){ // # //handle comment lines // I don't think we actually need to
     printf("comment\n"); //Debug
 }
 
-void changeDirectory(){ // cd 
+void changeDirectory(string dirName){ // cd COME BACK LATER
+
+//WHAT I'M TRYING TO DO IS MERGE OVERLAPPING STRINGS
+//check if this is legit https://docs.w3cub.com/cpp/filesystem/exists
+    string base;
+    //cout << dictionary[1].value << endl;
+    //cout << dictionary[1].value.find(dirName) << endl;
+    
+    
+    if(dictionary[1].value.find(dirName) != string::npos){ //if the inputted directory name is part of the directory
+    //you are currently in 
+    printf("you are in overwriting function\n"); //DEBUG
+    
+        int val = dictionary[1].value.find(dirName); //this is the value at which the dirName begins to overlap in CWD
+        base = dictionary[1].value.substr(0, val); //this is where they differ
+        dictionary[1].value = base + dirName; //new directory name yeet
+    }
+    else{
+    printf("you are NOT\n"); //DEBUG
+    //changes value of CWD
+    base = dictionary[1].value;
+    dirName = base + dirName;
+    dictionary[1].value = dirName;
+    }
+   
     printf("change directory\n"); //Debug
 }
 
@@ -72,10 +98,30 @@ void listVariables(){ // lv // Should do what printDict does now
 
 }
 
-void unset(){ // unset asdfasdfasdf
+void unset(string varName){ // unset
     printf("unset variable\n"); //Debug
+    
+    bool skip = (varName.compare(dictionary[0].name) == 0 || varName.compare(dictionary[1].name) == 0 || varName.compare(dictionary[2].name) == 0);
+    bool success = false;
 
+    if(!skip){
+        for(int i = 0; i < dictionary.size(); i++){
+            if(dictionary[i].name.compare(varName) == 0){
+                    dictionary.erase(dictionary.begin() + i);
+                    success = true;
+            }
+        }
+    } else {
+        error("Cannot unset default variables")
+    }
+
+    if(success){
+        printf("Variable %s successfully removed\n", varName.c_str());
+    } else {
+        printf("Variable %s could not be found\n", varName.c_str());
+    }
 }
+
 
 void execute(){ // !
     printf("execute program\n"); //Debug
@@ -84,12 +130,13 @@ void execute(){ // !
 
 void quit(){ // quit
     printf("quit shell\n"); //Debug
+    exit(0); //exit with status 0
     
 }
 
 void assign(){ // =
     printf("assign variable\n");
-    
+    dictionary.push_back({tokens[0], tokens[2]});
 }
 
 void interpretCommand(){ //master function to call appropriate function based on first two tokens
@@ -103,13 +150,13 @@ void interpretCommand(){ //master function to call appropriate function based on
         comment();
 
     } else if (firstToken.compare("cd") == 0){
-        changeDirectory();
+        changeDirectory(secondToken);
 
     } else if (firstToken.compare("lv") == 0){
         listVariables();
 
     } else if (firstToken.compare("unset") == 0){
-        unset();
+        unset(secondToken);
 
     } else if (firstToken.compare("!") == 0){
         execute();
@@ -127,8 +174,8 @@ void interpretCommand(){ //master function to call appropriate function based on
 
 int main(int argc, char **argv){    
 
-    dictionary.push_back({"PATH", "/bin:/usr/bin:/home/jrli238/bin"}); //add default variables to dictionary of variables
-    dictionary.push_back({"CWD", "/home/jrli238"});
+    dictionary.push_back({"PATH", "/bin:/usr/bin:/home/mbr335/bin"}); //add default variables to dictionary of variables
+    dictionary.push_back({"CWD", "/home/mbr335/"});
     dictionary.push_back({"PS", "cs270>"});
     
     /* loop forever, read line of input, break input into tokens,  
