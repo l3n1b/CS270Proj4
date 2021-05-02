@@ -113,7 +113,7 @@ void unset(string varName){ // unset
             }
         }
     } else {
-        error("Cannot unset default variables")
+        error("Cannot unset default variables");
     }
 
     if(success){
