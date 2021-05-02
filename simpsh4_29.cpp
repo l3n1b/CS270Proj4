@@ -120,9 +120,28 @@ void comment(){ // # //handle comment lines // I don't think we actually need to
 
 void changeDirectory(string dirName){ // cd COME BACK LATER
 
+//if there is not a /home/mbr335, you should be able to assume? 
+
     /* Code Joseph experimented with */
     DIR *directory;
     struct dirent *de;
+
+
+    //leni test
+    int rc = chdir(dirName.c_str());
+
+    cout << "I'm about to go into error?" << endl; //debug baybeeeee
+    if (rc < 0) {
+        cout << "Error: not a valid directory path." << endl;
+    }
+    else{
+      cout << "Directory changed successfully." << endl; //debug  
+      dictionary[1].value = dirName; //updates cwd
+    }
+    
+
+    //end leni test
+
 
     if(!(directory = opendir(dictionary[1].value.c_str()))){
         error("Failed to open directory");
@@ -143,7 +162,7 @@ void changeDirectory(string dirName){ // cd COME BACK LATER
     //cout << dictionary[1].value << endl;
     //cout << dictionary[1].value.find(dirName) << endl;
     
-    
+    /* Possibly 'twas kinda dumb
     if(dictionary[1].value.find(dirName) != string::npos){ //if the inputted directory name is part of the directory
     //you are currently in 
     printf("you are in overwriting function\n"); //DEBUG
@@ -153,13 +172,13 @@ void changeDirectory(string dirName){ // cd COME BACK LATER
         dictionary[1].value = base + dirName; //new directory name yeet
     }
     else{
-    printf("you are NOT\n"); //DEBUG
+    printf("you are NOT in overwriting function\n"); //DEBUG
     //changes value of CWD
     base = dictionary[1].value;
     dirName = base + dirName;
     dictionary[1].value = dirName;
     }
-   
+   */
     printf("change directory\n"); //Debug
 }
 
@@ -358,7 +377,9 @@ handler_t *Signal(int signum, handler_t handler){
 int main(int argc, char **argv){    
 
     dictionary.push_back({"PATH", "/bin:/usr/bin:/home/mbr335/bin"}); //add default variables to dictionary of variables
-    dictionary.push_back({"CWD", "/home/jrli238/"});
+    char tmp[256];
+    getcwd(tmp, 256);
+    dictionary.push_back({"CWD", tmp});
     dictionary.push_back({"PS", "cs270>"});
 
     Signal(SIGINT, sigint_handler);  //install SIGINT handler
@@ -392,3 +413,6 @@ int main(int argc, char **argv){
 //execve doesn't take arguments
 //make variable assignments with same name replace eachother
 //empty input file puts EOF on stdin
+
+/* WDLD? (what did Leni do ) */
+//fixed CWD so it automatically updates
