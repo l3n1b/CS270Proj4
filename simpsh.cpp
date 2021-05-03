@@ -105,7 +105,7 @@ void scanner(){
         }
     }
 
-    subVars();
+    subVars(); //replace $ variables with their values
 }
 
 void printTokens(){ //Debug function to list everything in tokens list
@@ -120,53 +120,31 @@ void comment(){ // # //handle comment lines // I don't think we actually need to
 
 void changeDirectory(string dirName){ // cd COME BACK LATER
 
-//if there is not a /home/mbr335, you should be able to assume? 
-
-    /* Code Joseph experimented with */
-    //DIR *directory;
-    //struct dirent *de;
-
-
-    //leni test
     int rc = chdir(dirName.c_str());
-
-   //cout << "I'm about to go into error?" << endl; //debug baybeeeee
-    if (rc < 0) {
+    
+    if (rc < 0) { //not valid directory 
         cout << "Error: not a valid directory path." << endl;
     }
     else{
-      cout << "Directory changed successfully." << endl; //debug  
+      cout << "Directory changed successfully." << endl;  
       char tmp[256];
       getcwd(tmp, 256);
       dictionary[1].value = tmp; //updates cwd
     }
-    
-
-    //end leni test
-
-    /*
-    if(!(directory = opendir(dictionary[1].value.c_str()))){
-        error("Failed to open directory");
-    } else { //directory opened
-        //prints every file in directory indicated by CWD
-        while (0 != (de = readdir(directory))){
-            printf("Found file: %s\n", de->d_name);
-        }
-    }
-
-    closedir(directory);
-    */
-
-    //printf("change directory\n"); //Debug
 }
 
 void listVariables(){ // lv // Should do what printDict does now
     printf("list variables\n"); //Debug
+    for(size_t i = 0; i < tokens.size(); i++){
+        if(tokens[i].compare("outto:") == 0){
+            error("Cannot write to a file with lv");
+            return;
+        }
+    }
 
     for(size_t i = 0; i < dictionary.size(); i++){ //print out all of the tokens as read by scanner function
         printf("%s = %s\n", dictionary.at(i).name.c_str(), dictionary.at(i).value.c_str()); //.c_str() allows printf to print c++ strings
     }
-
 }
 
 void unset(string varName){ // unset
@@ -242,8 +220,6 @@ void execute(){ // !
         tokens.erase(tokens.begin() + writeOut - offset); //-2 because infrom: and file tokens already removed
     }
 
-    printTokens();
-
     pid_t pid = fork();
     if(pid == 0){ //forks and only replaces child process
 
@@ -252,19 +228,6 @@ void execute(){ // !
         //char chrAddress[] = "/home/jrli238/Documents/proj4/myecho"; //address of myecho test file
         char chrAddress[tokens[1].length() + 1];
         strcpy(chrAddress, tokens[1].c_str());
-
-        /* char *newargv[256];
-        char *newenviron[] = { NULL };
-        char *line;
-
-        int 
-        for(size_t i = 0; i < tokens.size(); i++){
-            for(size_t j = 0; j < tokens[i].length(); j++){
-                //line append tokens[i].charAt(j);
-            }
-            //line append '\0'
-
-        } */
 
         char *newargv[256];
         char *newenviron[] = { NULL };
@@ -279,9 +242,14 @@ void execute(){ // !
         newargv[i-1] = NULL; //last argumnet must be NULL
         //printf("argv: %d %s\n", i, newargv[i-1]); //debug
 
-        execve(chrAddress, newargv, newenviron);
-        perror("execve");   /* execve() returns only on error */
-        exit(EXIT_FAILURE);
+        if((chrAddress[0] == '.' && chrAddress[1] == '/') || chrAddress[0] == '/'){
+            execve(chrAddress, newargv, newenviron);
+            perror("execve");   /* execve() returns only on error */
+            exit(EXIT_FAILURE);
+        } else {
+            printf("no\n");
+            exit(0);
+        }
     } else {
         wait(NULL);
     }
@@ -312,6 +280,11 @@ void assign(){ // =
         //cout << dictionary[i].name << " and " << tokens[0] << endl;
         if(dictionary[i].name.compare(tokens[0]) == 0)
         {
+            if(dictionary[1].name.compare(tokens[0]) == 0) //catches CWD overwrite
+            {
+                cout << "You cannot overwrite CWD." << endl;
+                return;
+            }
             cout << "Overwriting variable: " << dictionary[i].name << endl;
             dictionary[i].value = tokens[2];
             return;
@@ -421,7 +394,12 @@ int main(int argc, char **argv){
 /* KNOWN PROBLEMS */
 //Scanner doesn't handle "" correctly
 //Handling CTRL+D is bad
-//execve doesn't take arguments
-//make variable assignments with same name replace eachother
 //empty input file puts EOF on stdin
 //Shouldn't be able to change CWD
+
+/* LIST OF THINGS TO FIX AT END */
+//remove bitches
+//remove print tokens
+//make tar ball
+//make README file
+//try to break ! execve

@@ -1,0 +1,10 @@
+!
+myecho
+yes
+e
+3rd
+HA: what is going on
+argv[0]: myecho
+argv[1]: yes
+argv[2]: e
+argv[3]: 3rd

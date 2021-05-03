@@ -67,14 +67,6 @@ void scanner(){
 
     tokens.clear(); //empties tokens vector
 
-    // for(int i = 0; i < 256; i++) debug
-    //     printf("%x ", lineIn[i]);
-    
-    // if(lineIn[0] == 0){ //exits if CTRL+D pressed on empty line except it doesn't work
-    //     exit(0);
-    // }  
-
-
     string newToken = "";
 
     for(size_t i = 0; i < strlen(lineIn); i++){
@@ -105,7 +97,7 @@ void scanner(){
         }
     }
 
-    subVars();
+    subVars(); //replaces $ varaiables with their values
 }
 
 void printTokens(){ //Debug function to list everything in tokens list
