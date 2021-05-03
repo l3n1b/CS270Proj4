@@ -1,7 +1,17 @@
+//Started from Github commit "what??"
+
 #include <string>
 #include <cstring>
 #include <iostream>
 #include <vector>
+#include <unistd.h>
+#include <wait.h>
+#include <signal.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 using namespace std;
 
@@ -14,17 +24,66 @@ vector<variable> dictionary; //initialize variable list globally
 //PATH = dictionary[0].value
 vector<string> tokens; //initialize token list globally
 
+void error(string errMsg){ //error handling function
+    printf("%s\n", errMsg.c_str());
+}
+
+//function for substituting variables in when $ is found
+void subVars(){ 
+    for(size_t i = 0; i < tokens.size(); i++){ //loop through tokens, type size_t instead of int so signeeness is the same in comparison
+        string token = tokens.at(i);   
+ 
+        if(token[0] == '$'){ //check for $ variable indicator
+            token = token.substr(1, token.length()); //remove $ from token
+            printf("token %s starts with $\n", tokens.at(i).c_str());
+
+            for(size_t j = 0; j < dictionary.size(); j++){ //loop through variables
+                if(token.compare(dictionary.at(j).name) == 0){
+                    tokens.at(i) = dictionary.at(j).value;
+                }
+            }
+            
+        }
+    }
+
+    return;
+}
+
+void quit(){ // quit
+    printf("quit shell\n"); //Debug
+    exit(0); //exit with status 0
+    
+}
+
 //Scanner function to read a line and generate a list of tokens
 void scanner(){ 
 
+    printf("%s ", dictionary[2].value.c_str()); //prints prompt string before input
     char lineIn[256]; 
-    fgets(lineIn, 256, stdin);
+    fgets(lineIn, 256, stdin); //reads user input
+
+    if(feof(stdin)) // End-of-file EOF in standard input meaning CTRL+D was pressed
+        quit();
+
     tokens.clear(); //empties tokens vector
+
+    // for(int i = 0; i < 256; i++) debug
+    //     printf("%x ", lineIn[i]);
+    
+    // if(lineIn[0] == 0){ //exits if CTRL+D pressed on empty line except it doesn't work
+    //     exit(0);
+    // }
+
 
     string newToken = "";
 
-    for(int i = 0; i < strlen(lineIn); i++){
+    for(size_t i = 0; i < strlen(lineIn); i++){
         char next = lineIn[i];
+        if (next == '#' && i > 0){
+            error("Encountered invalid symbol # in input");
+            tokens.clear();
+            return;
+        }
 
         if (next == '\"') { //character is " so read everything between quotes as a single token
             do { //reads up until next "
@@ -45,16 +104,14 @@ void scanner(){
             newToken = ""; //reset token
         }
     }
+
+    subVars();
 }
 
 void printTokens(){ //Debug function to list everything in tokens list
-    for(int i = 0; i < tokens.size(); i++){ //print out all of the tokens as read by scanner function
+    for(size_t i = 0; i < tokens.size(); i++){ //print out all of the tokens as read by scanner function
         printf("%s\n", tokens.at(i).c_str()); //.c_str() allows printf to print c++ strings
     }
-}
-
-void error(string errMsg){ //error handling function
-    printf("%s\n", errMsg.c_str());
 }
 
 void comment(){ // # //handle comment lines // I don't think we actually need to do anything
@@ -63,37 +120,50 @@ void comment(){ // # //handle comment lines // I don't think we actually need to
 
 void changeDirectory(string dirName){ // cd COME BACK LATER
 
-//WHAT I'M TRYING TO DO IS MERGE OVERLAPPING STRINGS
-//check if this is legit https://docs.w3cub.com/cpp/filesystem/exists
-//hello world
-    string base;
-    //cout << dictionary[1].value << endl;
-    //cout << dictionary[1].value.find(dirName) << endl;
-    
-    
-    if(dictionary[1].value.find(dirName) != string::npos){ //if the inputted directory name is part of the directory
-    //you are currently in 
-    printf("you are in overwriting function\n"); //DEBUG
-    
-        int val = dictionary[1].value.find(dirName); //this is the value at which the dirName begins to overlap in CWD
-        base = dictionary[1].value.substr(0, val); //this is where they differ
-        dictionary[1].value = base + dirName; //new directory name yeet
+//if there is not a /home/mbr335, you should be able to assume? 
+
+    /* Code Joseph experimented with */
+    //DIR *directory;
+    //struct dirent *de;
+
+
+    //leni test
+    int rc = chdir(dirName.c_str());
+
+   //cout << "I'm about to go into error?" << endl; //debug baybeeeee
+    if (rc < 0) {
+        cout << "Error: not a valid directory path." << endl;
     }
     else{
-    printf("you are NOT\n"); //DEBUG
-    //changes value of CWD
-    base = dictionary[1].value;
-    dirName = base + dirName;
-    dictionary[1].value = dirName;
+      cout << "Directory changed successfully." << endl; //debug  
+      char tmp[256];
+      getcwd(tmp, 256);
+      dictionary[1].value = tmp; //updates cwd
     }
-   
-    printf("change directory\n"); //Debug
+    
+
+    //end leni test
+
+    /*
+    if(!(directory = opendir(dictionary[1].value.c_str()))){
+        error("Failed to open directory");
+    } else { //directory opened
+        //prints every file in directory indicated by CWD
+        while (0 != (de = readdir(directory))){
+            printf("Found file: %s\n", de->d_name);
+        }
+    }
+
+    closedir(directory);
+    */
+
+    //printf("change directory\n"); //Debug
 }
 
 void listVariables(){ // lv // Should do what printDict does now
     printf("list variables\n"); //Debug
 
-    for(int i = 0; i < dictionary.size(); i++){ //print out all of the tokens as read by scanner function
+    for(size_t i = 0; i < dictionary.size(); i++){ //print out all of the tokens as read by scanner function
         printf("%s = %s\n", dictionary.at(i).name.c_str(), dictionary.at(i).value.c_str()); //.c_str() allows printf to print c++ strings
     }
 
@@ -106,7 +176,7 @@ void unset(string varName){ // unset
     bool success = false;
 
     if(!skip){
-        for(int i = 0; i < dictionary.size(); i++){
+        for(size_t i = 0; i < dictionary.size(); i++){
             if(dictionary[i].name.compare(varName) == 0){
                     dictionary.erase(dictionary.begin() + i);
                     success = true;
@@ -114,6 +184,7 @@ void unset(string varName){ // unset
         }
     } else {
         error("Cannot unset default variables");
+        return;
     }
 
     if(success){
@@ -123,24 +194,137 @@ void unset(string varName){ // unset
     }
 }
 
-
 void execute(){ // !
     printf("execute program\n"); //Debug
 
-}
+    //set up variables and pointers for redirecting i/o streams in functions
+    int readIn = -1;
+    int writeOut = -1;
 
-void quit(){ // quit
-    printf("quit shell\n"); //Debug
-    exit(0); //exit with status 0
-    
+    //check for infrom: and outto: tokens
+    for(size_t i = 0; i < tokens.size(); i++){
+
+
+        if(tokens[i].compare("infrom:") == 0){
+            readIn = i; // sets readIn to index of infrom: token
+        }
+        if(tokens[i].compare("outto:") == 0){
+            writeOut = i; // sets writeOut to index of outto: token
+        }
+    } //need to remove tokens touched so they aren't passed to execute
+
+    //printf("%d, %d\n", readIn, writeOut); //debug
+    int saveIn;
+    int saveOut;
+    int fdIn;
+    int fdOut;
+
+    if(readIn >= 0){
+        saveIn = dup(STDIN_FILENO);
+        fdIn = open(tokens[readIn+1].c_str(), O_RDONLY|O_CREAT, 0777); //O_RDONLY isn't an error even though it has the red squigly
+        //printf("file in fd: %d\n", fdIn); //debug
+        dup2(fdIn, STDIN_FILENO);
+        tokens.erase(tokens.begin() + readIn); //remove infrom: token and filename token
+        tokens.erase(tokens.begin() + readIn);
+    }
+
+    if(writeOut >= 0){
+        int offset = 0;
+        if(readIn < writeOut && readIn != -1){ //if readIn already removed tokens
+             offset = 2;
+        }
+
+        saveOut = dup(STDOUT_FILENO);
+        fdOut = open(tokens[writeOut+1 - offset].c_str(), O_RDWR|O_CREAT, 0777); //O_RDONLY isn't an error even though it has the red squigly
+        dup2(fdOut, STDOUT_FILENO);
+        
+        tokens.erase(tokens.begin() + writeOut - offset); //remove outto and following token
+        tokens.erase(tokens.begin() + writeOut - offset); //-2 because infrom: and file tokens already removed
+    }
+
+    printTokens();
+
+    pid_t pid = fork();
+    if(pid == 0){ //forks and only replaces child process
+
+        //printf("wot? %s\n", tokens[1].c_str()); //DEBUG
+        /* test code modified from execve man page example */
+        //char chrAddress[] = "/home/jrli238/Documents/proj4/myecho"; //address of myecho test file
+        char chrAddress[tokens[1].length() + 1];
+        strcpy(chrAddress, tokens[1].c_str());
+
+        /* char *newargv[256];
+        char *newenviron[] = { NULL };
+        char *line;
+
+        int 
+        for(size_t i = 0; i < tokens.size(); i++){
+            for(size_t j = 0; j < tokens[i].length(); j++){
+                //line append tokens[i].charAt(j);
+            }
+            //line append '\0'
+
+        } */
+
+        char *newargv[256];
+        char *newenviron[] = { NULL };
+
+        newargv[0] = chrAddress;
+        
+        size_t i = 2;
+        for(i = 2; i < tokens.size(); i++){
+            newargv[i-1] = &tokens[i][0];
+        }
+
+        newargv[i-1] = NULL; //last argumnet must be NULL
+        //printf("argv: %d %s\n", i, newargv[i-1]); //debug
+
+        execve(chrAddress, newargv, newenviron);
+        perror("execve");   /* execve() returns only on error */
+        exit(EXIT_FAILURE);
+    } else {
+        wait(NULL);
+    }
+
+    /* redirect input/output back to simple shell */
+    if(readIn >= 0){
+        //fixes files
+        close(fdIn);
+        dup2(saveIn, STDIN_FILENO);
+        close(saveIn);
+    }    
+
+    if(writeOut >= 0){
+        //fix files
+        //printf("into file\n"); //debug
+        close(fdOut);
+        dup2(saveOut, STDOUT_FILENO);
+        close(saveOut);
+        //printf("out to stdout\n"); //debug
+    }    
 }
 
 void assign(){ // =
     printf("assign variable\n");
+    
+    for(size_t i = 0; i<dictionary.size(); i++)
+    {
+        //cout << dictionary[i].name << " and " << tokens[0] << endl;
+        if(dictionary[i].name.compare(tokens[0]) == 0)
+        {
+            cout << "Overwriting variable: " << dictionary[i].name << endl;
+            dictionary[i].value = tokens[2];
+            return;
+        }
+    }
     dictionary.push_back({tokens[0], tokens[2]});
 }
 
 void interpretCommand(){ //master function to call appropriate function based on first two tokens
+
+    if(tokens.size() == 0) //avoid out of range error
+        return;
+
     string firstToken = tokens.at(0);
     string secondToken = "";
 
@@ -170,42 +354,74 @@ void interpretCommand(){ //master function to call appropriate function based on
 
     } else { //First token is just text
         error("Invalid command");
+        return;
     }
+
+}
+
+void sigint_handler(int sig){ //SIGINT handler
+
+    sigset_t mask, prev_mask;
+    sigfillset(&mask);                         //place all signals in mask
+    sigprocmask(SIG_BLOCK, &mask, &prev_mask); //block all signals
+
+    printf(" Caught sigint BITCHES!\n"); //debug, remove BITCHES before submission
+
+    // Restore previous blocked set 
+    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+}
+
+typedef void handler_t(int);
+handler_t *Signal(int signum, handler_t handler){
+  struct sigaction action, old_action;
+
+  action.sa_handler = handler;
+  sigemptyset(&action.sa_mask); /* Block sigs of type being handled */
+  action.sa_flags = 0; /* Restart syscalls if possible */
+
+  if (sigaction(signum, &action, &old_action) < 0)
+    fprintf(stderr, "%s: %s\n", "Signal error", strerror(errno));
+  return (old_action.sa_handler);
 }
 
 int main(int argc, char **argv){    
 
     dictionary.push_back({"PATH", "/bin:/usr/bin:/home/mbr335/bin"}); //add default variables to dictionary of variables
-    dictionary.push_back({"CWD", "/home/mbr335/"});
+    char tmp[256];
+    getcwd(tmp, 256);
+    dictionary.push_back({"CWD", tmp});
     dictionary.push_back({"PS", "cs270>"});
-    
+
+    Signal(SIGINT, sigint_handler);  //install SIGINT handler
+
     /* loop forever, read line of input, break input into tokens,  
     check for valid syntax, carry out operation or print error message*/
     for(;;){ //main infinite loop
 
         scanner(); //run scanner to read user input into tokens list
-
+        
         printTokens(); //Debug
 
+        //redirInOut(); //calls interpret command after managing input and output streams
         interpretCommand(); //call command function based on user input
-
     }
 }
 
 /* NOTES */
 //when calling execve, we need to set up the third argument which is the environment variables pointer
-//close any open files before fork
-//Catch sigint so child process can be terminated but shell is not
-//any # occurring other than the first token is a syntax error.
+//close any open files before fork L34, M18
 //Would probably be smarter to implement interpretCommand with switch/case statement instead of if-elses
 //Need outto and infrom capabilities
 //look for infrom: and outto: for redirecting input/output
-//variable names ($ substitutes value) or general string (filename, argument, value)
 //Could be insanely optimized by making pointers to input using strsep instead of copying everything to vectors
 //Stuff about directories: Lecture 34 at minute 33
+//CWD cannot be changed directly, but must be kept up to date with cd command
+// remove any //debug lines
 
 /* KNOWN PROBLEMS */
 //Scanner doesn't handle "" correctly
-
-
-
+//Handling CTRL+D is bad
+//execve doesn't take arguments
+//make variable assignments with same name replace eachother
+//empty input file puts EOF on stdin
+//Shouldn't be able to change CWD

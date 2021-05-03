@@ -72,7 +72,7 @@ void scanner(){
     
     // if(lineIn[0] == 0){ //exits if CTRL+D pressed on empty line except it doesn't work
     //     exit(0);
-    // }
+    // }  
 
 
     string newToken = "";

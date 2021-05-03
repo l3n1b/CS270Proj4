@@ -1,0 +1,3 @@
+!
+myecho
+argv[0]: myecho
