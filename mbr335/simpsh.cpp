@@ -1,5 +1,3 @@
-//Started from Github commit "what??"
-
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -21,7 +19,6 @@ struct variable {
 };
 
 vector<variable> dictionary; //initialize variable list globally
-//PATH = dictionary[0].value
 vector<string> tokens; //initialize token list globally
 
 void error(string errMsg){ //error handling function
@@ -30,27 +27,42 @@ void error(string errMsg){ //error handling function
 
 //function for substituting variables in when $ is found
 void subVars(){ 
-    for(size_t i = 0; i < tokens.size(); i++){ //loop through tokens, type size_t instead of int so signeeness is the same in comparison
+    for(size_t i = 0; i < tokens.size(); i++){ //loop through tokens, type size_t instead of int so signedness is the same in comparison
         string token = tokens.at(i);   
- 
-        if(token[0] == '$'){ //check for $ variable indicator
-            token = token.substr(1, token.length()); //remove $ from token
-            printf("token %s starts with $\n", tokens.at(i).c_str());
 
-            for(size_t j = 0; j < dictionary.size(); j++){ //loop through variables
-                if(token.compare(dictionary.at(j).name) == 0){
-                    tokens.at(i) = dictionary.at(j).value;
+        string firstPart = "";
+        string lastPart = "";
+        for(size_t j = 0; j < token.length(); j++){
+            if(token[j] == '$'){
+                firstPart = token.substr(0, j);
+                
+                unsigned int k = j+1;
+                string var = "";
+                while(isalnum(token[k]) && k < token.length()){ // !(isalnum(token[k]))
+                    var += token[k];
+                    k++;
                 }
+
+                string middlePart = "";
+                for(size_t m = 0; m < dictionary.size(); m++){
+                    if(var.compare(dictionary.at(m).name) == 0){ //replace variable name token with value
+                        middlePart = dictionary[m].value;
+                    }
+                }
+
+                lastPart = token.substr(k, token.length());
+                token = firstPart + middlePart + lastPart;
             }
-            
         }
+
+        tokens.at(i) = token;
     }
 
     return;
 }
 
 void quit(){ // quit
-    printf("quit shell\n"); //Debug
+    printf("Quitting shell\n");
     exit(0); //exit with status 0
     
 }
@@ -67,14 +79,6 @@ void scanner(){
 
     tokens.clear(); //empties tokens vector
 
-    // for(int i = 0; i < 256; i++) debug
-    //     printf("%x ", lineIn[i]);
-    
-    // if(lineIn[0] == 0){ //exits if CTRL+D pressed on empty line except it doesn't work
-    //     exit(0);
-    // }
-
-
     string newToken = "";
 
     for(size_t i = 0; i < strlen(lineIn); i++){
@@ -90,7 +94,7 @@ void scanner(){
                 i++;
                 next = lineIn[i];
                 newToken += next;
-            } while(next != '\"');
+            } while(next != '\"' && next != '\0');
 
             newToken.pop_back(); //remove final " from end string
 
@@ -114,11 +118,8 @@ void printTokens(){ //Debug function to list everything in tokens list
     }
 }
 
-void comment(){ // # //handle comment lines // I don't think we actually need to do anything
-    printf("comment\n"); //Debug
-}
 
-void changeDirectory(string dirName){ // cd COME BACK LATER
+void changeDirectory(string dirName){ //changes directory and updates it in CWD
 
     int rc = chdir(dirName.c_str());
     
@@ -134,7 +135,6 @@ void changeDirectory(string dirName){ // cd COME BACK LATER
 }
 
 void listVariables(){ // lv // Should do what printDict does now
-    printf("list variables\n"); //Debug
     for(size_t i = 0; i < tokens.size(); i++){
         if(tokens[i].compare("outto:") == 0){
             error("Cannot write to a file with lv");
@@ -147,8 +147,7 @@ void listVariables(){ // lv // Should do what printDict does now
     }
 }
 
-void unset(string varName){ // unset
-    printf("unset variable\n"); //Debug
+void unset(string varName){ // unset variables
     
     bool skip = (varName.compare(dictionary[0].name) == 0 || varName.compare(dictionary[1].name) == 0 || varName.compare(dictionary[2].name) == 0);
     bool success = false;
@@ -172,8 +171,7 @@ void unset(string varName){ // unset
     }
 }
 
-void execute(){ // !
-    printf("execute program\n"); //Debug
+void execute(){ // ! executes function specified
 
     //set up variables and pointers for redirecting i/o streams in functions
     int readIn = -1;
@@ -191,7 +189,6 @@ void execute(){ // !
         }
     } //need to remove tokens touched so they aren't passed to execute
 
-    //printf("%d, %d\n", readIn, writeOut); //debug
     int saveIn;
     int saveOut;
     int fdIn;
@@ -200,7 +197,7 @@ void execute(){ // !
     if(readIn >= 0){
         saveIn = dup(STDIN_FILENO);
         fdIn = open(tokens[readIn+1].c_str(), O_RDONLY|O_CREAT, 0777); //O_RDONLY isn't an error even though it has the red squigly
-        //printf("file in fd: %d\n", fdIn); //debug
+        
         dup2(fdIn, STDIN_FILENO);
         tokens.erase(tokens.begin() + readIn); //remove infrom: token and filename token
         tokens.erase(tokens.begin() + readIn);
@@ -223,9 +220,6 @@ void execute(){ // !
     pid_t pid = fork();
     if(pid == 0){ //forks and only replaces child process
 
-        //printf("wot? %s\n", tokens[1].c_str()); //DEBUG
-        /* test code modified from execve man page example */
-        //char chrAddress[] = "/home/jrli238/Documents/proj4/myecho"; //address of myecho test file
         char chrAddress[tokens[1].length() + 1];
         strcpy(chrAddress, tokens[1].c_str());
 
@@ -240,18 +234,33 @@ void execute(){ // !
         }
 
         newargv[i-1] = NULL; //last argumnet must be NULL
-        //printf("argv: %d %s\n", i, newargv[i-1]); //debug
 
-        if((chrAddress[0] == '.' && chrAddress[1] == '/') || chrAddress[0] == '/'){
+        execve(chrAddress, newargv, newenviron);
+        if(chrAddress[0] == '/'){
             execve(chrAddress, newargv, newenviron);
             perror("execve");   /* execve() returns only on error */
             exit(EXIT_FAILURE);
         } else {
-            printf("no\n");
-            exit(0);
+
+            string partialPath = "";
+            string PATH = dictionary[0].value;
+            for(size_t i = 0; i < PATH.length(); i++){
+                if(PATH[i] == ':'){
+                    partialPath = partialPath + "/" + tokens[1];
+                    strcpy(chrAddress, partialPath.c_str());
+                    execve(chrAddress, newargv, newenviron);
+
+                    partialPath = "";
+                    
+                } else {
+                    partialPath = partialPath + PATH[i];
+                }
+            }            
         }
+        printf("That file doesn't exist\n");
+        exit(0); //should never truly get here
     } else {
-        wait(NULL);
+        wait(NULL); //Reap child process
     }
 
     /* redirect input/output back to simple shell */
@@ -264,20 +273,16 @@ void execute(){ // !
 
     if(writeOut >= 0){
         //fix files
-        //printf("into file\n"); //debug
         close(fdOut);
         dup2(saveOut, STDOUT_FILENO);
         close(saveOut);
-        //printf("out to stdout\n"); //debug
     }    
 }
 
-void assign(){ // =
-    printf("assign variable\n");
-    
-    for(size_t i = 0; i<dictionary.size(); i++)
+void assign(){ // = assigns value to variable in dictionary vector
+
+    for(size_t i = 0; i<dictionary.size(); i++) 
     {
-        //cout << dictionary[i].name << " and " << tokens[0] << endl;
         if(dictionary[i].name.compare(tokens[0]) == 0)
         {
             if(dictionary[1].name.compare(tokens[0]) == 0) //catches CWD overwrite
@@ -304,8 +309,8 @@ void interpretCommand(){ //master function to call appropriate function based on
     if(tokens.size() >= 2) //avoid out of range error
         secondToken = tokens.at(1);
     
-    if(firstToken.compare("#") == 0){ // if first token is # indicating comment
-        comment();
+    if (firstToken.compare("#") == 0){
+        //Do nothing but avoid printing Invalid command
 
     } else if (firstToken.compare("cd") == 0){
         changeDirectory(secondToken);
@@ -329,19 +334,10 @@ void interpretCommand(){ //master function to call appropriate function based on
         error("Invalid command");
         return;
     }
-
 }
 
 void sigint_handler(int sig){ //SIGINT handler
-
-    sigset_t mask, prev_mask;
-    sigfillset(&mask);                         //place all signals in mask
-    sigprocmask(SIG_BLOCK, &mask, &prev_mask); //block all signals
-
-    printf(" Caught sigint BITCHES!\n"); //debug, remove BITCHES before submission
-
-    // Restore previous blocked set 
-    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+    //Does nothing, just overrides exit command from SIGINT
 }
 
 typedef void handler_t(int);
@@ -368,38 +364,20 @@ int main(int argc, char **argv){
     Signal(SIGINT, sigint_handler);  //install SIGINT handler
 
     /* loop forever, read line of input, break input into tokens,  
-    check for valid syntax, carry out operation or print error message*/
+        carry out operation or print error message*/
     for(;;){ //main infinite loop
 
         scanner(); //run scanner to read user input into tokens list
         
-        printTokens(); //Debug
+        //printTokens(); //Debuging function for listing tokens as interpretted by scanner
 
-        //redirInOut(); //calls interpret command after managing input and output streams
         interpretCommand(); //call command function based on user input
     }
 }
 
-/* NOTES */
-//when calling execve, we need to set up the third argument which is the environment variables pointer
-//close any open files before fork L34, M18
-//Would probably be smarter to implement interpretCommand with switch/case statement instead of if-elses
-//Need outto and infrom capabilities
-//look for infrom: and outto: for redirecting input/output
-//Could be insanely optimized by making pointers to input using strsep instead of copying everything to vectors
-//Stuff about directories: Lecture 34 at minute 33
-//CWD cannot be changed directly, but must be kept up to date with cd command
-// remove any //debug lines
-
 /* KNOWN PROBLEMS */
-//Scanner doesn't handle "" correctly
-//Handling CTRL+D is bad
-//empty input file puts EOF on stdin
-//Shouldn't be able to change CWD
 
 /* LIST OF THINGS TO FIX AT END */
-//remove bitches
-//remove print tokens
 //make tar ball
 //make README file
 //try to break ! execve

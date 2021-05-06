@@ -1,5 +1,5 @@
-!
-myecho
+no
+yecho
 yes
 e
 3rd
